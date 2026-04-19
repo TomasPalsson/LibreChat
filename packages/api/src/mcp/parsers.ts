@@ -91,6 +91,7 @@ function parseAsString(result: t.MCPToolCallResponse): string {
 export function formatToolContent(
   result: t.MCPToolCallResponse,
   provider: t.Provider,
+  metadata?: { serverName?: string; toolName?: string },
 ): t.FormattedContentResult {
   if (!RECOGNIZED_PROVIDERS.has(provider)) {
     return [parseAsString(result), undefined];
@@ -141,6 +142,8 @@ export function formatToolContent(
         const uiResource: UIResource = {
           ...item.resource,
           resourceId,
+          serverName: metadata?.serverName,
+          toolName: metadata?.toolName,
         };
         uiResources.push(uiResource);
         resourceText.push(`UI Resource ID: ${resourceId}`);

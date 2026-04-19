@@ -689,6 +689,10 @@ export type UIResource = {
   uri: string;
   mimeType?: string;
   text?: string;
+  /** MCP server name — needed for MCP Apps proxy requests */
+  serverName?: string;
+  /** MCP tool name — needed for MCP Apps rendering */
+  toolName?: string;
   [key: string]: unknown;
 };
 

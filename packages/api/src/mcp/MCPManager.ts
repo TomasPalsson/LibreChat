@@ -1,6 +1,11 @@
 import pick from 'lodash/pick';
 import { logger } from '@librechat/data-schemas';
-import { CallToolResultSchema, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CallToolResultSchema,
+  ReadResourceResultSchema,
+  ErrorCode,
+  McpError,
+} from '@modelcontextprotocol/sdk/types.js';
 import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type { TokenMethods, IUser } from '@librechat/data-schemas';
 import type { GraphTokenResolver } from '~/utils/graph';
@@ -367,12 +372,90 @@ Please follow these instructions when using tools from the respective MCP server
         this.updateUserLastActivity(userId);
       }
       this.checkIdleConnections();
-      return formatToolContent(result as t.MCPToolCallResponse, provider);
+      return formatToolContent(result as t.MCPToolCallResponse, provider, {
+        serverName,
+        toolName,
+      });
     } catch (error) {
       // Log with context and re-throw or handle as needed
       logger.error(`${logPrefix}[${toolName}] Tool call failed`, error);
       // Rethrowing allows the caller (createMCPTool) to handle the final user message
       throw error;
     }
+  }
+
+  /**
+   * Reads a UI resource from an MCP server.
+   * Used by MCP Apps iframes to fetch additional resources via the host.
+   */
+  async readResource({
+    userId,
+    serverName,
+    uri,
+  }: {
+    userId: string;
+    serverName: string;
+    uri: string;
+  }): Promise<unknown> {
+    const logPrefix = `[MCP][User: ${userId}][${serverName}]`;
+    const connection = await this.getConnection({ serverName });
+
+    if (!(await connection.isConnected())) {
+      throw new McpError(
+        ErrorCode.InternalError,
+        `${logPrefix} Connection is not active. Cannot read resource.`,
+      );
+    }
+
+    const result = await connection.client.request(
+      {
+        method: 'resources/read',
+        params: { uri },
+      },
+      ReadResourceResultSchema,
+      { timeout: connection.timeout },
+    );
+
+    return result;
+  }
+
+  /**
+   * Proxies a tool call from an MCP App iframe to the MCP server.
+   * Unlike callTool, this is a lightweight proxy without provider formatting.
+   */
+  async appToolCall({
+    userId,
+    serverName,
+    toolName,
+    toolArguments,
+  }: {
+    userId: string;
+    serverName: string;
+    toolName: string;
+    toolArguments: Record<string, unknown>;
+  }): Promise<unknown> {
+    const logPrefix = `[MCP][User: ${userId}][${serverName}]`;
+    const connection = await this.getConnection({ serverName });
+
+    if (!(await connection.isConnected())) {
+      throw new McpError(
+        ErrorCode.InternalError,
+        `${logPrefix} Connection is not active. Cannot execute app tool call.`,
+      );
+    }
+
+    const result = await connection.client.request(
+      {
+        method: 'tools/call',
+        params: {
+          name: toolName,
+          arguments: toolArguments,
+        },
+      },
+      CallToolResultSchema,
+      { timeout: connection.timeout },
+    );
+
+    return result;
   }
 }
