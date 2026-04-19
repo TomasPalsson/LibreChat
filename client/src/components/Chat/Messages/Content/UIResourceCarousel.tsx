@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { UIResourceRenderer } from '@mcp-ui/client';
+import { AppRenderer } from '@mcp-ui/client';
 import type { UIResource } from 'librechat-data-provider';
-import { useOptionalMessagesOperations } from '~/Providers';
-import { handleUIAction } from '~/utils';
+import { getMCPSandboxConfig, callMCPAppTool, readMCPResource } from '~/utils/mcpApps';
 
 interface UIResourceCarouselProps {
   uiResources: UIResource[];
@@ -13,7 +12,6 @@ const UIResourceCarousel: React.FC<UIResourceCarouselProps> = React.memo(({ uiRe
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [isContainerHovered, setIsContainerHovered] = useState(false);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const { ask } = useOptionalMessagesOperations();
 
   const handleScroll = React.useCallback(() => {
     if (!scrollContainerRef.current) return;
@@ -108,13 +106,29 @@ const UIResourceCarousel: React.FC<UIResourceCarouselProps> = React.memo(({ uiRe
               }}
             >
               <div className="flex h-full flex-col">
-                <UIResourceRenderer
-                  resource={uiResource}
-                  onUIAction={async (result) => handleUIAction(result, ask)}
-                  htmlProps={{
-                    autoResizeIframe: { width: true, height: true },
-                  }}
-                />
+                {uiResource.toolName && uiResource.serverName ? (
+                  <AppRenderer
+                    toolName={uiResource.toolName}
+                    sandbox={getMCPSandboxConfig()}
+                    html={uiResource.text}
+                    toolResourceUri={uiResource.uri}
+                    onCallTool={async (params) => {
+                      return callMCPAppTool(
+                        uiResource.serverName!,
+                        params.name,
+                        (params.arguments as Record<string, unknown>) ?? {},
+                      );
+                    }}
+                    onReadResource={async (params) => {
+                      return readMCPResource(uiResource.serverName!, params.uri);
+                    }}
+                    onOpenLink={async ({ url }) => {
+                      window.open(url, '_blank', 'noopener,noreferrer');
+                      return {};
+                    }}
+                    onError={(err) => console.error('[MCP App] Error:', err)}
+                  />
+                ) : null}
               </div>
             </div>
           );

@@ -1,8 +1,8 @@
 import React from 'react';
-import { UIResourceRenderer } from '@mcp-ui/client';
-import { useOptionalMessagesConversation, useOptionalMessagesOperations } from '~/Providers';
+import { AppRenderer } from '@mcp-ui/client';
+import { useOptionalMessagesConversation } from '~/Providers';
 import { useConversationUIResources } from '~/hooks/Messages/useConversationUIResources';
-import { handleUIAction } from '~/utils';
+import { getMCPSandboxConfig, callMCPAppTool, readMCPResource } from '~/utils/mcpApps';
 import { useLocalize } from '~/hooks';
 
 interface MCPUIResourceProps {
@@ -17,7 +17,6 @@ interface MCPUIResourceProps {
 export function MCPUIResource(props: MCPUIResourceProps) {
   const { resourceId } = props.node.properties;
   const localize = useLocalize();
-  const { ask } = useOptionalMessagesOperations();
   const { conversationId } = useOptionalMessagesConversation();
 
   const conversationResourceMap = useConversationUIResources(conversationId ?? undefined);
@@ -34,16 +33,33 @@ export function MCPUIResource(props: MCPUIResourceProps) {
     );
   }
 
+  if (!uiResource.toolName || !uiResource.serverName) {
+    return null;
+  }
+
   try {
     return (
       <span className="mx-1 inline-block w-full align-middle">
-        <UIResourceRenderer
-          resource={uiResource}
-          onUIAction={async (result) => handleUIAction(result, ask)}
-          htmlProps={{
-            autoResizeIframe: { width: true, height: true },
-            sandboxPermissions: 'allow-popups',
+        <AppRenderer
+          toolName={uiResource.toolName}
+          sandbox={getMCPSandboxConfig()}
+          html={uiResource.text}
+          toolResourceUri={uiResource.uri}
+          onCallTool={async (params) => {
+            return callMCPAppTool(
+              uiResource.serverName!,
+              params.name,
+              (params.arguments as Record<string, unknown>) ?? {},
+            );
           }}
+          onReadResource={async (params) => {
+            return readMCPResource(uiResource.serverName!, params.uri);
+          }}
+          onOpenLink={async ({ url }) => {
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return {};
+          }}
+          onError={(err) => console.error('[MCP App] Error:', err)}
         />
       </span>
     );
