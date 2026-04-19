@@ -5,35 +5,34 @@ import { MCPUIResource } from '../MCPUIResource';
 import {
   useMessageContext,
   useOptionalMessagesConversation,
-  useOptionalMessagesOperations,
 } from '~/Providers';
 import { useLocalize } from '~/hooks';
-import { handleUIAction } from '~/utils';
 
 // Mock dependencies
 jest.mock('~/Providers');
 jest.mock('~/hooks');
-jest.mock('~/utils');
 
 jest.mock('@mcp-ui/client', () => ({
-  UIResourceRenderer: ({ resource, onUIAction }: any) => (
+  AppRenderer: ({ toolName, toolResourceUri }: any) => (
     <div
       data-testid="ui-resource-renderer"
-      data-resource-uri={resource?.uri}
-      onClick={() => onUIAction({ action: 'test' })}
+      data-resource-uri={toolResourceUri}
+      data-tool-name={toolName}
     />
   ),
+}));
+
+jest.mock('~/utils/mcpApps', () => ({
+  getMCPSandboxConfig: () => ({ url: new URL('http://localhost/sandbox') }),
+  callMCPAppTool: jest.fn(),
+  readMCPResource: jest.fn(),
 }));
 
 const mockUseMessageContext = useMessageContext as jest.MockedFunction<typeof useMessageContext>;
 const mockUseMessagesConversation = useOptionalMessagesConversation as jest.MockedFunction<
   typeof useOptionalMessagesConversation
 >;
-const mockUseMessagesOperations = useOptionalMessagesOperations as jest.MockedFunction<
-  typeof useOptionalMessagesOperations
->;
 const mockUseLocalize = useLocalize as jest.MockedFunction<typeof useLocalize>;
-const mockHandleUIAction = handleUIAction as jest.MockedFunction<typeof handleUIAction>;
 
 describe('MCPUIResource', () => {
   const mockLocalize = (key: string, values?: any) => {
@@ -43,8 +42,6 @@ describe('MCPUIResource', () => {
     };
     return translations[key] || key;
   };
-
-  const mockAskFn = jest.fn();
 
   const renderWithRecoil = (ui: React.ReactNode) => render(<RecoilRoot>{ui}</RecoilRoot>);
 
@@ -58,13 +55,6 @@ describe('MCPUIResource', () => {
     mockUseMessagesConversation.mockReturnValue({
       conversation: { conversationId: 'conv123' },
       conversationId: 'conv123',
-    } as any);
-    mockUseMessagesOperations.mockReturnValue({
-      ask: mockAskFn,
-      getMessages: () => currentTestMessages,
-      regenerate: jest.fn(),
-      handleContinue: jest.fn(),
-      setMessages: jest.fn(),
     } as any);
     mockUseLocalize.mockReturnValue(mockLocalize as any);
   });
@@ -171,36 +161,6 @@ describe('MCPUIResource', () => {
       const renderer = screen.getByTestId('ui-resource-renderer');
       expect(renderer).toBeInTheDocument();
       expect(renderer).toHaveAttribute('data-resource-uri', 'ui://test/resource-id');
-    });
-  });
-
-  describe('UI action handling', () => {
-    it('should handle UI actions with handleUIAction', async () => {
-      currentTestMessages = [
-        {
-          messageId: 'msg123',
-          attachments: [
-            {
-              type: 'ui_resources',
-              ui_resources: [
-                {
-                  resourceId: 'resource-1',
-                  uri: 'ui://test/resource',
-                  mimeType: 'text/html',
-                  text: '<p>Interactive Resource</p>',
-                },
-              ],
-            },
-          ],
-        },
-      ];
-
-      renderWithRecoil(<MCPUIResource node={{ properties: { resourceId: 'resource-1' } }} />);
-
-      const renderer = screen.getByTestId('ui-resource-renderer');
-      renderer.click();
-
-      expect(mockHandleUIAction).toHaveBeenCalledWith({ action: 'test' }, mockAskFn);
     });
   });
 

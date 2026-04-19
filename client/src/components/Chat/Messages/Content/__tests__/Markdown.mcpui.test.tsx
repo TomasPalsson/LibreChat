@@ -24,8 +24,8 @@ jest.mock('~/hooks');
 
 // Mock @mcp-ui/client to render identifiable elements for assertions
 jest.mock('@mcp-ui/client', () => ({
-  UIResourceRenderer: ({ resource }: any) => (
-    <div data-testid="ui-resource-renderer" data-resource-uri={resource?.uri} />
+  AppRenderer: ({ toolName, toolResourceUri }: any) => (
+    <div data-testid="ui-resource-renderer" data-resource-uri={toolResourceUri} data-tool-name={toolName} />
   ),
 }));
 

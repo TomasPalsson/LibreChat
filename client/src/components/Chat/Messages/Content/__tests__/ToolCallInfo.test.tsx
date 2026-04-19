@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tools } from 'librechat-data-provider';
-import { UIResourceRenderer } from '@mcp-ui/client';
+import { AppRenderer } from '@mcp-ui/client';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type { TAttachment } from 'librechat-data-provider';
 import UIResourceCarousel from '~/components/Chat/Messages/Content/UIResourceCarousel';
@@ -31,7 +31,13 @@ jest.mock('~/Providers', () => ({
 }));
 
 jest.mock('@mcp-ui/client', () => ({
-  UIResourceRenderer: jest.fn(() => null),
+  AppRenderer: jest.fn(() => null),
+}));
+
+jest.mock('~/utils/mcpApps', () => ({
+  getMCPSandboxConfig: () => ({ url: new URL('http://localhost/sandbox') }),
+  callMCPAppTool: jest.fn(),
+  readMCPResource: jest.fn(),
 }));
 
 jest.mock('../UIResourceCarousel', () => ({
@@ -80,8 +86,8 @@ describe('ToolCallInfo', () => {
 
       render(<ToolCallInfo {...mockProps} output="Some output" attachments={attachments} />);
 
-      // Should render UIResourceRenderer for single resource
-      expect(UIResourceRenderer).toHaveBeenCalledWith(
+      // Should render AppRenderer for single resource
+      expect(AppRenderer).toHaveBeenCalledWith(
         expect.objectContaining({
           resource: uiResource,
           onUIAction: expect.any(Function),
@@ -125,21 +131,21 @@ describe('ToolCallInfo', () => {
         expect.any(Object),
       );
 
-      // Should not render individual UIResourceRenderer
-      expect(UIResourceRenderer).not.toHaveBeenCalled();
+      // Should not render individual AppRenderer
+      expect(AppRenderer).not.toHaveBeenCalled();
     });
 
     it('should handle no attachments', () => {
       render(<ToolCallInfo {...mockProps} output="Some output" />);
 
-      expect(UIResourceRenderer).not.toHaveBeenCalled();
+      expect(AppRenderer).not.toHaveBeenCalled();
       expect(UIResourceCarousel).not.toHaveBeenCalled();
     });
 
     it('should handle empty attachments array', () => {
       render(<ToolCallInfo {...mockProps} attachments={[]} />);
 
-      expect(UIResourceRenderer).not.toHaveBeenCalled();
+      expect(AppRenderer).not.toHaveBeenCalled();
       expect(UIResourceCarousel).not.toHaveBeenCalled();
     });
 
@@ -158,7 +164,7 @@ describe('ToolCallInfo', () => {
 
       render(<ToolCallInfo {...mockProps} attachments={attachments} />);
 
-      expect(UIResourceRenderer).not.toHaveBeenCalled();
+      expect(AppRenderer).not.toHaveBeenCalled();
       expect(UIResourceCarousel).not.toHaveBeenCalled();
     });
   });
@@ -206,7 +212,7 @@ describe('ToolCallInfo', () => {
 
       render(<ToolCallInfo {...mockProps} output="Some output" attachments={attachments} />);
 
-      expect(UIResourceRenderer).toHaveBeenCalledWith(
+      expect(AppRenderer).toHaveBeenCalledWith(
         expect.objectContaining({
           resource: { type: 'text', data: 'Test' },
         }),
@@ -230,7 +236,7 @@ describe('ToolCallInfo', () => {
       render(<ToolCallInfo {...mockProps} output={output} />);
 
       // Since we now use attachments, ui_resources in output should be ignored
-      expect(UIResourceRenderer).not.toHaveBeenCalled();
+      expect(AppRenderer).not.toHaveBeenCalled();
       expect(UIResourceCarousel).not.toHaveBeenCalled();
     });
 
@@ -257,7 +263,7 @@ describe('ToolCallInfo', () => {
       render(<ToolCallInfo {...mockProps} output={output} attachments={attachments} />);
 
       // Should use attachments, not output
-      expect(UIResourceRenderer).toHaveBeenCalledWith(
+      expect(AppRenderer).toHaveBeenCalledWith(
         expect.objectContaining({
           resource: { type: 'attachment', data: 'From attachments' },
         }),
