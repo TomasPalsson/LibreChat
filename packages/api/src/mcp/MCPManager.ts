@@ -372,9 +372,21 @@ Please follow these instructions when using tools from the respective MCP server
         this.updateUserLastActivity(userId);
       }
       this.checkIdleConnections();
+      // Check if the tool declares a UI resource for MCP Apps rendering
+      let resourceUri: string | undefined;
+      try {
+        const tools = await connection.fetchTools();
+        const toolDef = tools.find((t) => t.name === toolName);
+        const meta = toolDef?._meta as { ui?: { resourceUri?: string } } | undefined;
+        resourceUri = meta?.ui?.resourceUri;
+      } catch {
+        // Non-critical -- tools render without the app UI
+      }
+
       return formatToolContent(result as t.MCPToolCallResponse, provider, {
         serverName,
         toolName,
+        resourceUri,
       });
     } catch (error) {
       // Log with context and re-throw or handle as needed

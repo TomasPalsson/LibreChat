@@ -91,7 +91,7 @@ function parseAsString(result: t.MCPToolCallResponse): string {
 export function formatToolContent(
   result: t.MCPToolCallResponse,
   provider: t.Provider,
-  metadata?: { serverName?: string; toolName?: string },
+  metadata?: { serverName?: string; toolName?: string; resourceUri?: string },
 ): t.FormattedContentResult {
   if (!RECOGNIZED_PROVIDERS.has(provider)) {
     return [parseAsString(result), undefined];
@@ -173,6 +173,19 @@ export function formatToolContent(
       const stringified = JSON.stringify(item, null, 2);
       currentTextBlock += (currentTextBlock ? '\n\n' : '') + stringified;
     }
+  }
+
+  // MCP Apps: if the tool declares a ui:// resourceUri but didn't include a resource
+  // content item, create a synthetic UIResource so the frontend renders AppRenderer.
+  if (uiResources.length === 0 && metadata?.resourceUri && metadata.serverName && metadata.toolName) {
+    const resourceId = generateResourceId(metadata.resourceUri);
+    uiResources.push({
+      resourceId,
+      uri: metadata.resourceUri,
+      mimeType: 'text/html;profile=mcp-app',
+      serverName: metadata.serverName,
+      toolName: metadata.toolName,
+    });
   }
 
   if (uiResources.length > 0) {

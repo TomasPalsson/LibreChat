@@ -2,14 +2,17 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useRecoilValue } from 'recoil';
 import { Button } from '@librechat/client';
 import { TriangleAlert } from 'lucide-react';
+import { AppRenderer } from '@mcp-ui/client';
 import {
   Constants,
+  Tools,
   dataService,
   actionDelimiter,
   actionDomainSeparator,
 } from 'librechat-data-provider';
-import type { TAttachment } from 'librechat-data-provider';
+import type { TAttachment, UIResource } from 'librechat-data-provider';
 import { useLocalize, useProgress, useExpandCollapse } from '~/hooks';
+import { getMCPSandboxConfig, callMCPAppTool, readMCPResource } from '~/utils/mcpApps';
 import { ToolIcon, getToolIconType, isError } from './ToolOutput';
 import { useMCPIconMap } from '~/hooks/MCP';
 import { AttachmentGroup } from './Parts';
@@ -231,7 +234,7 @@ export default function ToolCall({
         <div className="overflow-hidden" ref={expandRef}>
           {hasInfo && (
             <div className="my-2 overflow-hidden rounded-lg border border-border-light bg-surface-secondary">
-              <ToolCallInfo input={args ?? ''} output={output} attachments={attachments} />
+              <ToolCallInfo input={args ?? ''} output={output} />
             </div>
           )}
         </div>
@@ -255,6 +258,32 @@ export default function ToolCall({
         </div>
       )}
       {attachments && attachments.length > 0 && <AttachmentGroup attachments={attachments} />}
+      {(() => {
+        const uiResources: UIResource[] =
+          attachments
+            ?.filter((a) => a.type === Tools.ui_resources)
+            .flatMap((a) => (a[Tools.ui_resources] ?? []) as UIResource[]) ?? [];
+        const app = uiResources.find((r) => r.toolName && r.serverName);
+        if (!app) return null;
+        return (
+          <div className="my-2">
+            <AppRenderer
+              toolName={app.toolName!}
+              sandbox={getMCPSandboxConfig()}
+              toolResourceUri={app.uri}
+              onCallTool={async (params) =>
+                callMCPAppTool(app.serverName!, params.name, (params.arguments as Record<string, unknown>) ?? {})
+              }
+              onReadResource={async (params) => readMCPResource(app.serverName!, params.uri)}
+              onOpenLink={async ({ url }) => {
+                window.open(url, '_blank', 'noopener,noreferrer');
+                return {};
+              }}
+              onError={(err) => console.error('[MCP App] Error:', err)}
+            />
+          </div>
+        );
+      })()}
     </>
   );
 }

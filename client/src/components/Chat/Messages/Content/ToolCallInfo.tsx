@@ -1,11 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { Tools } from 'librechat-data-provider';
-import { AppRenderer } from '@mcp-ui/client';
-import type { TAttachment, UIResource } from 'librechat-data-provider';
 import { useLocalize, useExpandCollapse } from '~/hooks';
-import { getMCPSandboxConfig, callMCPAppTool, readMCPResource } from '~/utils/mcpApps';
-import UIResourceCarousel from './UIResourceCarousel';
 import { cn } from '~/utils';
 import { OutputRenderer } from './ToolOutput';
 
@@ -95,11 +90,9 @@ function InputRenderer({ input }: { input: string }) {
 export default function ToolCallInfo({
   input,
   output,
-  attachments,
 }: {
   input: string;
   output?: string | null;
-  attachments?: TAttachment[];
 }) {
   const localize = useLocalize();
   const [showParams, setShowParams] = useState(false);
@@ -119,13 +112,6 @@ export default function ToolCallInfo({
     }
     return input.trim().length > 0;
   }, [input]);
-
-  const uiResources: UIResource[] =
-    attachments
-      ?.filter((attachment) => attachment.type === Tools.ui_resources)
-      .flatMap((attachment) => {
-        return attachment[Tools.ui_resources] as UIResource[];
-      }) ?? [];
 
   return (
     <div className="w-full px-3 py-3.5">
@@ -156,35 +142,6 @@ export default function ToolCallInfo({
               <InputRenderer input={input} />
             </div>
           </div>
-        </>
-      )}
-      {uiResources.length > 0 && (
-        <>
-          {(hasParams || output) && <div className="my-2 border-t border-border-light" />}
-          {uiResources.length > 1 && <UIResourceCarousel uiResources={uiResources} />}
-          {uiResources.length === 1 && uiResources[0].toolName && uiResources[0].serverName && (
-            <AppRenderer
-              toolName={uiResources[0].toolName}
-              sandbox={getMCPSandboxConfig()}
-              html={uiResources[0].text}
-              toolResourceUri={uiResources[0].uri}
-              onCallTool={async (params) => {
-                return callMCPAppTool(
-                  uiResources[0].serverName!,
-                  params.name,
-                  (params.arguments as Record<string, unknown>) ?? {},
-                );
-              }}
-              onReadResource={async (params) => {
-                return readMCPResource(uiResources[0].serverName!, params.uri);
-              }}
-              onOpenLink={async ({ url }) => {
-                window.open(url, '_blank', 'noopener,noreferrer');
-                return {};
-              }}
-              onError={(err) => console.error('[MCP App] Error:', err)}
-            />
-          )}
         </>
       )}
     </div>
