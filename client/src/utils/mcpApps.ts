@@ -1,6 +1,7 @@
 import { request } from 'librechat-data-provider';
 
-const MCP_SANDBOX_URL = new URL('/api/mcp/sandbox', window.location.origin);
+// Served as a static file from client/public/ -- no API round-trip needed
+const MCP_SANDBOX_URL = new URL('/mcp-sandbox.html', window.location.origin);
 
 export function getMCPSandboxConfig() {
   return { url: MCP_SANDBOX_URL };
