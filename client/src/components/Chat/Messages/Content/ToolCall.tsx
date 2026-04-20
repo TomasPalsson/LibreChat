@@ -267,12 +267,17 @@ export default function ToolCall({
         // but no inline text -- HTML is fetched via resources/read)
         const app = uiResources.find((r) => r.toolName && r.serverName && !r.text);
         if (!app) return null;
+        // Build CallToolResult shape for AppRenderer to forward to the iframe
+        const toolResult = app.structuredContent
+          ? { content: [], structuredContent: app.structuredContent as Record<string, unknown> }
+          : undefined;
         return (
           <div className="my-2">
             <AppRenderer
               toolName={app.toolName!}
               sandbox={getMCPSandboxConfig()}
               toolResourceUri={app.uri}
+              toolResult={toolResult}
               onCallTool={async (params) =>
                 callMCPAppTool(app.serverName!, params.name, (params.arguments as Record<string, unknown>) ?? {})
               }

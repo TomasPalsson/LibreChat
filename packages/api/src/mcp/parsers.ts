@@ -89,7 +89,7 @@ function parseAsString(result: t.MCPToolCallResponse): string {
  * provider-specific artifact merging is delegated to the agents package.
  */
 export function formatToolContent(
-  result: t.MCPToolCallResponse,
+  result: t.MCPToolCallResponse & { structuredContent?: Record<string, unknown> },
   provider: t.Provider,
   metadata?: { serverName?: string; toolName?: string; resourceUri?: string },
 ): t.FormattedContentResult {
@@ -185,6 +185,7 @@ export function formatToolContent(
       mimeType: 'text/html;profile=mcp-app',
       serverName: metadata.serverName,
       toolName: metadata.toolName,
+      structuredContent: result?.structuredContent,
     });
   }
 
