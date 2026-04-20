@@ -18,9 +18,21 @@ export async function callMCPAppTool(
   });
 }
 
+// Cache fetched HTML by uri to avoid re-fetching 3.6MB on every render
+const htmlCache = new Map<string, Promise<unknown>>();
+
 export async function readMCPResource(serverName: string, uri: string) {
-  return request.post('/api/mcp/resources/read', {
+  const key = `${serverName}:${uri}`;
+  const cached = htmlCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const promise = request.post('/api/mcp/resources/read', {
     serverName,
     uri,
   });
+  htmlCache.set(key, promise);
+  // Clear from cache if the request fails so it can be retried
+  promise.catch(() => htmlCache.delete(key));
+  return promise;
 }
