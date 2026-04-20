@@ -82,7 +82,19 @@
       }
 
       innerFrame = document.createElement('iframe');
-      innerFrame.sandbox = params.sandbox || 'allow-scripts';
+      innerFrame.sandbox = params.sandbox || 'allow-scripts allow-same-origin';
+
+      // Map MCP Apps permissions to iframe allow attribute
+      var allowParts = [];
+      if (permissions && typeof permissions === 'object') {
+        if (permissions.clipboardWrite) allowParts.push('clipboard-write');
+        if (permissions.camera) allowParts.push('camera');
+        if (permissions.microphone) allowParts.push('microphone');
+        if (permissions.geolocation) allowParts.push('geolocation');
+      }
+      if (allowParts.length > 0) {
+        innerFrame.allow = allowParts.join('; ');
+      }
 
       const cspMeta = buildCspMeta(csp);
       const fullHtml = cspMeta ? injectIntoHead(html, cspMeta) : html;
@@ -132,7 +144,7 @@
         ("font-src " + (resourceDomains || "'none'")).trim(),
         "frame-src " + frameDomains,
         "object-src 'none'",
-        "base-uri 'none'"
+        "base-uri 'self'"
       ].join('; ');
     }
 
