@@ -339,7 +339,7 @@ export default function ToolCall({
         </div>
       )}
       {attachments && attachments.length > 0 && <AttachmentGroup attachments={attachments} />}
-      {mcpApp && <MCPAppView app={mcpApp} args={_args} themeMode={themeMode} />}
+      {mcpApp && <MCPAppView key={mcpApp.resourceId} app={mcpApp} args={_args} themeMode={themeMode} />}
     </>
   );
 }
