@@ -263,7 +263,9 @@ export default function ToolCall({
           attachments
             ?.filter((a) => a.type === Tools.ui_resources)
             .flatMap((a) => (a[Tools.ui_resources] ?? []) as UIResource[]) ?? [];
-        const app = uiResources.find((r) => r.toolName && r.serverName);
+        // Only use AppRenderer for MCP Apps (synthetic resources with toolName/serverName
+        // but no inline text -- HTML is fetched via resources/read)
+        const app = uiResources.find((r) => r.toolName && r.serverName && !r.text);
         if (!app) return null;
         return (
           <div className="my-2">

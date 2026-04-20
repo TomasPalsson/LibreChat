@@ -33,36 +33,53 @@ export function MCPUIResource(props: MCPUIResourceProps) {
     );
   }
 
-  if (!uiResource.toolName || !uiResource.serverName) {
-    return null;
-  }
-
   try {
-    return (
-      <span className="mx-1 inline-block w-full align-middle">
-        <AppRenderer
-          toolName={uiResource.toolName}
-          sandbox={getMCPSandboxConfig()}
-          html={uiResource.text}
-          toolResourceUri={uiResource.uri}
-          onCallTool={async (params) => {
-            return callMCPAppTool(
-              uiResource.serverName!,
-              params.name,
-              (params.arguments as Record<string, unknown>) ?? {},
-            );
-          }}
-          onReadResource={async (params) => {
-            return readMCPResource(uiResource.serverName!, params.uri);
-          }}
-          onOpenLink={async ({ url }) => {
-            window.open(url, '_blank', 'noopener,noreferrer');
-            return {};
-          }}
-          onError={(err) => console.error('[MCP App] Error:', err)}
-        />
-      </span>
-    );
+    // MCP Apps: tool declares resourceUri, host fetches HTML via resources/read
+    if (uiResource.toolName && uiResource.serverName && !uiResource.text) {
+      return (
+        <span className="mx-1 inline-block w-full align-middle">
+          <AppRenderer
+            toolName={uiResource.toolName}
+            sandbox={getMCPSandboxConfig()}
+            toolResourceUri={uiResource.uri}
+            onCallTool={async (params) => {
+              return callMCPAppTool(
+                uiResource.serverName!,
+                params.name,
+                (params.arguments as Record<string, unknown>) ?? {},
+              );
+            }}
+            onReadResource={async (params) => {
+              return readMCPResource(uiResource.serverName!, params.uri);
+            }}
+            onOpenLink={async ({ url }) => {
+              window.open(url, '_blank', 'noopener,noreferrer');
+              return {};
+            }}
+            onError={(err) => console.error('[MCP App] Error:', err)}
+          />
+        </span>
+      );
+    }
+
+    // Inline UI resources: HTML is already in text, render directly in iframe
+    if (uiResource.text) {
+      const mimeType = uiResource.mimeType ?? 'text/html';
+      if (mimeType.includes('html')) {
+        return (
+          <span className="mx-1 inline-block w-full align-middle">
+            <iframe
+              srcDoc={uiResource.text}
+              sandbox="allow-scripts allow-same-origin"
+              style={{ width: '100%', minHeight: '200px', border: 'none' }}
+              title={uiResource.uri}
+            />
+          </span>
+        );
+      }
+    }
+
+    return null;
   } catch (error) {
     console.error('Error rendering UI resource:', error);
     return (
