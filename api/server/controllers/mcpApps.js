@@ -66,12 +66,8 @@ const appToolCall = async (req, res) => {
  * Serve the sandbox proxy HTML for MCP Apps.
  * @route GET /api/mcp/sandbox
  */
-const serveMCPSandbox = async (req, res) => {
+const serveMCPSandbox = async (_req, res) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     res.setHeader('Content-Type', 'text/html');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('X-Content-Type-Options', 'nosniff');

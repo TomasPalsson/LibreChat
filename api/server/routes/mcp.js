@@ -849,6 +849,6 @@ router.post('/app-tool-call', requireJwtAuth, checkMCPUsePermissions, appToolCal
  * Serve the sandbox proxy HTML for MCP Apps
  * @route GET /api/mcp/sandbox
  */
-router.get('/sandbox', requireJwtAuth, checkMCPUsePermissions, serveMCPSandbox);
+router.get('/sandbox', serveMCPSandbox);
 
 module.exports = router;
