@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, useContext } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useContext } from 'react';
 import { useRecoilValue } from 'recoil';
 import { Button, ThemeContext, isDark } from '@librechat/client';
 import { TriangleAlert } from 'lucide-react';
@@ -21,7 +21,7 @@ import ProgressText from './ProgressText';
 import { logger } from '~/utils';
 import store from '~/store';
 
-function MCPAppView({
+const MCPAppView = React.memo(function MCPAppView({
   app,
   args,
   themeMode,
@@ -32,16 +32,47 @@ function MCPAppView({
 }) {
   const [height, setHeight] = useState<number | undefined>(undefined);
 
-  const toolResult = app.structuredContent
-    ? { content: [], structuredContent: app.structuredContent as Record<string, unknown> }
-    : undefined;
+  const toolResult = useMemo(
+    () =>
+      app.structuredContent
+        ? { content: [] as never[], structuredContent: app.structuredContent as Record<string, unknown> }
+        : undefined,
+    [app.structuredContent],
+  );
 
-  let toolInput: Record<string, unknown> | undefined;
-  try {
-    toolInput = typeof args === 'string' ? JSON.parse(args) : args;
-  } catch {
-    toolInput = undefined;
-  }
+  const toolInput = useMemo(() => {
+    try {
+      return typeof args === 'string' ? JSON.parse(args) : args;
+    } catch {
+      return undefined;
+    }
+  }, [args]);
+
+  const hostContext = useMemo(() => ({ theme: isDark(themeMode) ? ('dark' as const) : ('light' as const) }), [themeMode]);
+
+  const handleCallTool = useCallback(
+    async (params: { name: string; arguments?: unknown }) =>
+      callMCPAppTool(app.serverName!, params.name, (params.arguments as Record<string, unknown>) ?? {}),
+    [app.serverName],
+  );
+
+  const handleReadResource = useCallback(
+    async (params: { uri: string }) => readMCPResource(app.serverName!, params.uri),
+    [app.serverName],
+  );
+
+  const handleOpenLink = useCallback(async ({ url }: { url: string }) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return {};
+  }, []);
+
+  const handleSizeChanged = useCallback((params: { height?: number; width?: number }) => {
+    if (params.height && params.height > 0) {
+      setHeight(params.height);
+    }
+  }, []);
+
+  const handleError = useCallback((err: Error) => console.error('[MCP App] Error:', err), []);
 
   return (
     <div className="my-2" style={height ? { height } : undefined}>
@@ -51,29 +82,16 @@ function MCPAppView({
         toolResourceUri={app.uri}
         toolResult={toolResult}
         toolInput={toolInput}
-        hostContext={{ theme: isDark(themeMode) ? 'dark' : 'light' }}
-        onCallTool={async (params) =>
-          callMCPAppTool(app.serverName!, params.name, (params.arguments as Record<string, unknown>) ?? {})
-        }
-        onReadResource={async (params) => readMCPResource(app.serverName!, params.uri)}
-        onOpenLink={async ({ url }) => {
-          window.open(url, '_blank', 'noopener,noreferrer');
-          return {};
-        }}
-        onMessage={async (params) => {
-          logger.log('[MCP App] Message:', params);
-          return {};
-        }}
-        onSizeChanged={(params) => {
-          if (params.height && params.height > 0) {
-            setHeight(params.height);
-          }
-        }}
-        onError={(err) => console.error('[MCP App] Error:', err)}
+        hostContext={hostContext}
+        onCallTool={handleCallTool}
+        onReadResource={handleReadResource}
+        onOpenLink={handleOpenLink}
+        onSizeChanged={handleSizeChanged}
+        onError={handleError}
       />
     </div>
   );
-}
+});
 
 export default function ToolCall({
   initialProgress = 0.1,
@@ -212,6 +230,14 @@ export default function ToolCall({
     [args, output],
   );
 
+  const mcpApp = useMemo(() => {
+    const uiResources: UIResource[] =
+      attachments
+        ?.filter((a) => a.type === Tools.ui_resources)
+        .flatMap((a) => (a[Tools.ui_resources] ?? []) as UIResource[]) ?? [];
+    return uiResources.find((r) => r.toolName && r.serverName && !r.text) ?? null;
+  }, [attachments]);
+
   const authDomain = useMemo(() => {
     return parsedAuthUrl?.hostname ?? '';
   }, [parsedAuthUrl]);
@@ -313,15 +339,7 @@ export default function ToolCall({
         </div>
       )}
       {attachments && attachments.length > 0 && <AttachmentGroup attachments={attachments} />}
-      {(() => {
-        const uiResources: UIResource[] =
-          attachments
-            ?.filter((a) => a.type === Tools.ui_resources)
-            .flatMap((a) => (a[Tools.ui_resources] ?? []) as UIResource[]) ?? [];
-        const app = uiResources.find((r) => r.toolName && r.serverName && !r.text);
-        if (!app) return null;
-        return <MCPAppView app={app} args={_args} themeMode={themeMode} />;
-      })()}
+      {mcpApp && <MCPAppView app={mcpApp} args={_args} themeMode={themeMode} />}
     </>
   );
 }
