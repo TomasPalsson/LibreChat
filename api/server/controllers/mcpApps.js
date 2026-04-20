@@ -23,7 +23,7 @@ const readMCPResource = async (req, res) => {
     }
 
     const mcpManager = getMCPManager();
-    const result = await mcpManager.readResource({ userId, serverName, uri });
+    const result = await mcpManager.readResource({ userId, serverName, uri, user: req.user });
     return res.json(result);
   } catch (error) {
     logger.error('[readMCPResource] Error:', error);
@@ -53,6 +53,7 @@ const appToolCall = async (req, res) => {
       serverName,
       toolName,
       toolArguments: toolArgs || {},
+      user: req.user,
     });
     return res.json(result);
   } catch (error) {

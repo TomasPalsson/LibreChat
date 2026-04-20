@@ -407,13 +407,15 @@ Please follow these instructions when using tools from the respective MCP server
     userId,
     serverName,
     uri,
+    user,
   }: {
     userId: string;
     serverName: string;
     uri: string;
+    user?: import('@librechat/data-schemas').IUser;
   }): Promise<unknown> {
     const logPrefix = `[MCP][User: ${userId}][${serverName}]`;
-    const connection = await this.getConnection({ serverName });
+    const connection = await this.getConnection({ serverName, user });
 
     if (!(await connection.isConnected())) {
       throw new McpError(
@@ -443,14 +445,16 @@ Please follow these instructions when using tools from the respective MCP server
     serverName,
     toolName,
     toolArguments,
+    user,
   }: {
     userId: string;
     serverName: string;
     toolName: string;
     toolArguments: Record<string, unknown>;
+    user?: import('@librechat/data-schemas').IUser;
   }): Promise<unknown> {
     const logPrefix = `[MCP][User: ${userId}][${serverName}]`;
-    const connection = await this.getConnection({ serverName });
+    const connection = await this.getConnection({ serverName, user });
 
     if (!(await connection.isConnected())) {
       throw new McpError(
