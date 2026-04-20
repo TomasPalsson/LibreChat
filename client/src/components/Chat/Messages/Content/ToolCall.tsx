@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useContext } from 'react';
 import { useRecoilValue } from 'recoil';
-import { Button } from '@librechat/client';
+import { Button, ThemeContext, isDark } from '@librechat/client';
 import { TriangleAlert } from 'lucide-react';
 import { AppRenderer } from '@mcp-ui/client';
 import {
@@ -20,6 +20,60 @@ import ToolCallInfo from './ToolCallInfo';
 import ProgressText from './ProgressText';
 import { logger } from '~/utils';
 import store from '~/store';
+
+function MCPAppView({
+  app,
+  args,
+  themeMode,
+}: {
+  app: UIResource;
+  args: string | Record<string, unknown>;
+  themeMode: string;
+}) {
+  const [height, setHeight] = useState<number | undefined>(undefined);
+
+  const toolResult = app.structuredContent
+    ? { content: [], structuredContent: app.structuredContent as Record<string, unknown> }
+    : undefined;
+
+  let toolInput: Record<string, unknown> | undefined;
+  try {
+    toolInput = typeof args === 'string' ? JSON.parse(args) : args;
+  } catch {
+    toolInput = undefined;
+  }
+
+  return (
+    <div className="my-2" style={height ? { height } : undefined}>
+      <AppRenderer
+        toolName={app.toolName!}
+        sandbox={getMCPSandboxConfig()}
+        toolResourceUri={app.uri}
+        toolResult={toolResult}
+        toolInput={toolInput}
+        hostContext={{ theme: isDark(themeMode) ? 'dark' : 'light' }}
+        onCallTool={async (params) =>
+          callMCPAppTool(app.serverName!, params.name, (params.arguments as Record<string, unknown>) ?? {})
+        }
+        onReadResource={async (params) => readMCPResource(app.serverName!, params.uri)}
+        onOpenLink={async ({ url }) => {
+          window.open(url, '_blank', 'noopener,noreferrer');
+          return {};
+        }}
+        onMessage={async (params) => {
+          logger.log('[MCP App] Message:', params);
+          return {};
+        }}
+        onSizeChanged={(params) => {
+          if (params.height && params.height > 0) {
+            setHeight(params.height);
+          }
+        }}
+        onError={(err) => console.error('[MCP App] Error:', err)}
+      />
+    </div>
+  );
+}
 
 export default function ToolCall({
   initialProgress = 0.1,
@@ -41,6 +95,7 @@ export default function ToolCall({
   auth?: string;
 }) {
   const localize = useLocalize();
+  const { theme: themeMode } = useContext(ThemeContext);
   const autoExpand = useRecoilValue(store.autoExpandTools);
   const hasOutput = (output?.length ?? 0) > 0;
   const [showInfo, setShowInfo] = useState(() => autoExpand && hasOutput);
@@ -263,33 +318,9 @@ export default function ToolCall({
           attachments
             ?.filter((a) => a.type === Tools.ui_resources)
             .flatMap((a) => (a[Tools.ui_resources] ?? []) as UIResource[]) ?? [];
-        // Only use AppRenderer for MCP Apps (synthetic resources with toolName/serverName
-        // but no inline text -- HTML is fetched via resources/read)
         const app = uiResources.find((r) => r.toolName && r.serverName && !r.text);
         if (!app) return null;
-        // Build CallToolResult shape for AppRenderer to forward to the iframe
-        const toolResult = app.structuredContent
-          ? { content: [], structuredContent: app.structuredContent as Record<string, unknown> }
-          : undefined;
-        return (
-          <div className="my-2">
-            <AppRenderer
-              toolName={app.toolName!}
-              sandbox={getMCPSandboxConfig()}
-              toolResourceUri={app.uri}
-              toolResult={toolResult}
-              onCallTool={async (params) =>
-                callMCPAppTool(app.serverName!, params.name, (params.arguments as Record<string, unknown>) ?? {})
-              }
-              onReadResource={async (params) => readMCPResource(app.serverName!, params.uri)}
-              onOpenLink={async ({ url }) => {
-                window.open(url, '_blank', 'noopener,noreferrer');
-                return {};
-              }}
-              onError={(err) => console.error('[MCP App] Error:', err)}
-            />
-          </div>
-        );
+        return <MCPAppView app={app} args={_args} themeMode={themeMode} />;
       })()}
     </>
   );
