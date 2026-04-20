@@ -379,6 +379,9 @@ Please follow these instructions when using tools from the respective MCP server
         const toolDef = tools.find((t) => t.name === toolName);
         const meta = toolDef?._meta as { ui?: { resourceUri?: string } } | undefined;
         resourceUri = meta?.ui?.resourceUri;
+        if (resourceUri) {
+          logger.debug(`[MCP][${serverName}][${toolName}] Found resourceUri: ${resourceUri}`);
+        }
       } catch {
         // Non-critical -- tools render without the app UI
       }
