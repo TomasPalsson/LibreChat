@@ -31,6 +31,7 @@ const MCPAppView = React.memo(function MCPAppView({
   themeMode: string;
 }) {
   const [height, setHeight] = useState<number | undefined>(undefined);
+  const [loaded, setLoaded] = useState(false);
 
   const toolResult = useMemo(
     () =>
@@ -69,13 +70,23 @@ const MCPAppView = React.memo(function MCPAppView({
   const handleSizeChanged = useCallback((params: { height?: number; width?: number }) => {
     if (params.height && params.height > 0) {
       setHeight(params.height);
+      setLoaded(true);
     }
   }, []);
 
   const handleError = useCallback((err: Error) => console.error('[MCP App] Error:', err), []);
 
   return (
-    <div className="my-2" style={height ? { height } : undefined}>
+    <div className="my-2" style={height ? { height } : { minHeight: 100 }}>
+      {!loaded && (
+        <div className="flex items-center gap-2 rounded-lg border border-border-light bg-surface-secondary px-4 py-3 text-sm text-text-secondary">
+          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Loading interactive view...
+        </div>
+      )}
       <AppRenderer
         toolName={app.toolName!}
         sandbox={getMCPSandboxConfig()}
