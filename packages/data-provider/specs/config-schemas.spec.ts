@@ -4,6 +4,8 @@ import {
   azureEndpointSchema,
   endpointSchema,
   RetentionMode,
+  isAllDataRetention,
+  isForcedTemporaryRetention,
   configSchema,
   interfaceSchema,
   fileStorageSchema,
@@ -990,6 +992,24 @@ describe('interfaceSchema', () => {
 
     expect(result.retentionMode).toBe(RetentionMode.ALL);
     expect(result.retainAgentFiles).toBe(true);
+  });
+
+  it('accepts the ephemeral retention mode', () => {
+    const result = interfaceSchema.parse({ retentionMode: RetentionMode.EPHEMERAL });
+    expect(result.retentionMode).toBe(RetentionMode.EPHEMERAL);
+    expect(RetentionMode.EPHEMERAL).toBe('ephemeral');
+  });
+
+  it('classifies ephemeral as forced-temporary, all-data retention', () => {
+    expect(isAllDataRetention(RetentionMode.EPHEMERAL)).toBe(true);
+    expect(isAllDataRetention(RetentionMode.ALL)).toBe(true);
+    expect(isAllDataRetention(RetentionMode.TEMPORARY)).toBe(false);
+    expect(isAllDataRetention(undefined)).toBe(false);
+
+    expect(isForcedTemporaryRetention(RetentionMode.EPHEMERAL)).toBe(true);
+    expect(isForcedTemporaryRetention(RetentionMode.ALL)).toBe(false);
+    expect(isForcedTemporaryRetention(RetentionMode.TEMPORARY)).toBe(false);
+    expect(isForcedTemporaryRetention(undefined)).toBe(false);
   });
 });
 
