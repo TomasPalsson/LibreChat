@@ -1780,5 +1780,43 @@ describe('OpenAIChatCompletionController', () => {
         expect.anything(),
       );
     });
+
+    /** The initializer gates `model_parameters.web_search` and reaches here with
+     *  `runtime` and no `req`. Threading the grant this request already resolved
+     *  is what keeps it from reading the role a second time. */
+    it.each([
+      [true, true],
+      [false, false],
+    ])(
+      'threads the resolved web search grant (%s) to the initializer',
+      async (webSearch, expected) => {
+        const { initializeAgent, resolveToolRoleGrants } = require('@librechat/api');
+        setCapabilities(['file_search']);
+        resolveToolRoleGrants.mockResolvedValueOnce({ runCode: true, fileSearch: true, webSearch });
+
+        await OpenAIChatCompletionController(req, res);
+
+        expect(resolveToolRoleGrants).toHaveBeenCalledTimes(1);
+        expect(initializeAgent).toHaveBeenCalledWith(
+          expect.objectContaining({ webSearchAvailable: expected }),
+          expect.anything(),
+        );
+      },
+    );
+
+    /** With nothing resolved there is nothing to reuse, so the grant is left for the
+     *  initializer rather than forced to a denial. */
+    it('leaves the web search grant to the initializer when no capability resolved it', async () => {
+      const { initializeAgent, resolveToolRoleGrants } = require('@librechat/api');
+      setCapabilities([]);
+
+      await OpenAIChatCompletionController(req, res);
+
+      expect(resolveToolRoleGrants).not.toHaveBeenCalled();
+      expect(initializeAgent).toHaveBeenCalledWith(
+        expect.objectContaining({ webSearchAvailable: undefined }),
+        expect.anything(),
+      );
+    });
   });
 });

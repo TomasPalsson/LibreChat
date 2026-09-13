@@ -758,10 +758,10 @@ const executeResponse = async (envelope, { req, res }) => {
        *  when the deployment has both capabilities off — both flags are false
        *  either way, so the read would be pure load on every request. One
        *  lookup answers both. */
-      /** Always resolved: `initializeAgent` gates `model_parameters.web_search` for
-       *  every agent whose value is not explicitly `false`, and it reaches here with
-       *  `runtime` and no `req`, so without this it would issue its own read. */
-      const toolRoleGrants = resolveToolRoleGrants({ req, getRoleByName: db.getRoleByName });
+      const toolRoleGrants =
+        codeCapabilityEnabled || fileSearchCapabilityEnabled
+          ? resolveToolRoleGrants({ req, getRoleByName: db.getRoleByName })
+          : null;
       const memoryAvailable = await resolveMemoryAvailability({
         enabledCapabilities,
         memoryConfig: appConfig?.memory,
@@ -777,9 +777,12 @@ const executeResponse = async (envelope, { req, res }) => {
        *  a tool the loader is about to drop. */
       const fileSearchAvailable =
         fileSearchCapabilityEnabled && (await toolRoleGrants)?.fileSearch === true;
-      /** Threaded so the initializer authorizes from this request's already-resolved
-       *  grant instead of reading the role again without a cache to share. */
-      const webSearchAvailable = (await toolRoleGrants)?.webSearch === true;
+      /** Threaded only when this request already resolved the grants, so the
+       *  initializer reuses it rather than reading the role a second time without a
+       *  cache to share. Left `undefined` otherwise: the initializer then resolves
+       *  it once itself, and only for an agent whose `web_search` is not `false`. */
+      const webSearchAvailable =
+        toolRoleGrants != null ? (await toolRoleGrants).webSearch === true : undefined;
       const skillsCapabilityEnabled = enabledCapabilities.has(AgentCapabilities.skills);
       const ephemeralSkillsToggle = request.ephemeralAgent?.skills === true;
       const accessibleSkillIds = skillsCapabilityEnabled

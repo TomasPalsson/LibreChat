@@ -65,8 +65,10 @@ describe('resolveAgentParameterSettings — denied parameters survive pruning', 
 
   it("preserves a stored web_search value through a denied editor's save", () => {
     const denied = resolved(false);
+    /** Stored parameters carry keys `AgentModelParameters` does not list, which is
+     *  exactly the case under test. */
     const stored = { model: 'gpt-4o', web_search: true, temperature: 0.5 };
-    expect(pruneAgentModelParameters(stored, denied)).toEqual(stored);
+    expect(pruneAgentModelParameters(stored as never, denied)).toEqual(stored);
   });
 
   it('still prunes a parameter the schema genuinely does not define', () => {
